@@ -1,7 +1,6 @@
 package slack
 
 import (
-	"fmt"
 	"log"
 	"os"
 
@@ -52,11 +51,13 @@ func Run(appToken, botToken string) {
 					switch ev := innerEvent.Data.(type) {
 					case *slackevents.AppMentionEvent:
 						_, _, err := api.PostMessage(ev.Channel, slack.MsgOptionText("Yes, hello.", false))
+						log.Printf("bot mentioned")
 						if err != nil {
-							fmt.Printf("failed posting message: %v", err)
+							log.Printf("failed posting message: %v", err)
 						}
-					case *slackevents.MemberJoinedChannelEvent:
-						fmt.Printf("user %q joined to channel %q", ev.User, ev.Channel)
+					case *slackevents.MessageEvent:
+						log.Printf("msg sent")
+						HandleMsgs(ev, client)
 					}
 				default:
 					client.Debugf("unsupported Events API event received")
