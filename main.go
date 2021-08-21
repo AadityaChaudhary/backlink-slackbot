@@ -1,7 +1,22 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"log"
+	"os"
+
+	"github.com/joho/godotenv"
+)
 
 func main() {
-	fmt.Println("vim-go")
+	fmt.Println("hello")
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	slackAppToken := os.Getenv("SLACK_APP_TOKEN")
+	slackBotToken := os.Getenv("SLACK_BOT_TOKEN")
+	log.Println("app", slackAppToken)
+	log.Println("bot", slackBotToken)
 }
