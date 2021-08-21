@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"backlink/slack"
+
 	"github.com/joho/godotenv"
 )
 
