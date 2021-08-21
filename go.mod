@@ -1,4 +1,4 @@
-module github.com/AadityaChaudhary/backlink-slackbot
+module backlink
 
 go 1.16
 

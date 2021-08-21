@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 
+	"backlink/slack"
 	"github.com/joho/godotenv"
 )
 
@@ -19,4 +20,6 @@ func main() {
 	slackBotToken := os.Getenv("SLACK_BOT_TOKEN")
 	log.Println("app", slackAppToken)
 	log.Println("bot", slackBotToken)
+
+	slack.Run(slackAppToken, slackBotToken)
 }
