@@ -6,13 +6,13 @@ import (
 
 type InterfaceElement struct {
 	Text string
-	Block *Block
+	Block Block
 }
 
 type InterfaceSection struct {
 	Client Client
 
-	Head *Block
+	Head Block
 
 	Title string
 	Elements []InterfaceElement
@@ -77,7 +77,7 @@ func ParseSections(client Client, blocks []Block) ([]InterfaceSection, error) {
 	var index = 0
 
 	for index < len(blocks) {
-		block := &blocks[index]
+		block := blocks[index]
 
 		if block.TypeHasChildren() {
 			var elements []InterfaceElement
@@ -99,7 +99,7 @@ func ParseSections(client Client, blocks []Block) ([]InterfaceSection, error) {
 
 					elements = append(elements, InterfaceElement{
 						Text:  flattened,
-						Block: &element,
+						Block: element,
 					})
 				}
 			}
@@ -117,6 +117,93 @@ func ParseSections(client Client, blocks []Block) ([]InterfaceSection, error) {
 	}
 
 	return sections, nil
+}
+
+func (section *InterfaceSection) AppendBlock(block Block) (InterfaceElement, error) {
+	value, err := section.Client.AppendChildren(*section.Head.Id, []Block { block })
+	if err != nil { return InterfaceElement {}, err }
+
+	element := InterfaceElement {
+		Text: Flatten(value.GetText()),
+		Block: value,
+	}
+
+	section.Elements = append(section.Elements, element)
+
+	return element, nil
+}
+
+func (section *InterfaceSection) AppendElement(description string) (InterfaceElement, error) {
+	block := Block {
+		Object: "block",
+		Type:   "paragraph",
+		Paragraph: &TextTree {
+			Text: []RichText {
+				{
+					Type: "text",
+					Text: &TextInfo {
+						Content: description,
+					},
+				},
+			},
+		},
+	}
+
+	return section.AppendBlock(block)
+}
+
+func (page *InterfacePage) AppendSection(description string, heading string) (InterfaceSection, error) {
+	// Append Children only returns one block... makes me feel like I have to insert them separately
+
+	if len(heading) > 0 {
+		headingBlock := Block {
+			Object: "block",
+			Type:   "heading_1",
+			Heading1: &Text {
+				Text: []RichText {
+					{
+						Type: "text",
+						Text: &TextInfo {
+							Content: heading,
+						},
+					},
+				},
+			},
+		}
+
+		_, err := page.Client.AppendChildren(page.Id, []Block { headingBlock })
+		if err != nil { return InterfaceSection {}, err }
+	}
+
+	startBlock := Block {
+		Object: "block",
+		Type:   "paragraph",
+		Paragraph: &TextTree {
+			Text: []RichText {
+				{
+					Type: "text",
+					Text: &TextInfo {
+						Content: description,
+					},
+				},
+			},
+		},
+	}
+
+	block, err := page.Client.AppendChildren(page.Id, []Block { startBlock })
+	if err != nil { return InterfaceSection {}, err }
+
+	section := InterfaceSection {
+		Client: page.Client,
+
+		Head: block, // Might not have a lot of data :)
+		Title: Flatten(block.GetText()),
+		Elements: nil, // no sub elements yet hopefully D:
+	}
+
+	page.Sections = append(page.Sections, section)
+
+	return section, err
 }
 
 func (page *InterfacePage) Reload() error {

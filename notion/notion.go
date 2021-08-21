@@ -63,12 +63,12 @@ type Text struct {
 
 type TextTree struct {
 	Text     []RichText `json:"text"`
-	Children []Block    `json:"children"` // does not work
+	Children []Block    `json:"children,omitempty"` // does not work
 }
 
 type CheckedTextTree struct {
 	Text     []RichText `json:"text"`
-	Children []Block    `json:"children"` // does not work
+	Children []Block    `json:"children,omitempty"` // does not work
 	Checked  bool       `json:"checked"`
 }
 
