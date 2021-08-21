@@ -34,29 +34,29 @@ type Session struct {
 
 func (block Block) GetText() []RichText {
 	switch block.Type {
-	case "Paragraph": return block.Paragraph.Text
-	case "Heading1": return block.Heading1.Text
-	case "Heading2": return block.Heading2.Text
-	case "Heading3": return block.Heading3.Text
-	case "BulletedListItem": return block.BulletedListItem.Text
-	case "NumberedListItem": return block.NumberedListItem.Text
-	case "ToDo": return block.ToDo.Text
-	case "Toggle": return block.Toggle.Text
+	case "paragraph": return block.Paragraph.Text
+	case "heading_1": return block.Heading1.Text
+	case "heading_2": return block.Heading2.Text
+	case "heading_3": return block.Heading3.Text
+	case "bulleted_list_item": return block.BulletedListItem.Text
+	case "numbered_list_item": return block.NumberedListItem.Text
+	case "to_do": return block.ToDo.Text
+	case "toggle": return block.Toggle.Text
 	}
 
 	return nil
 }
 
-func (block Block) GetChildren() []Block {
+func (block Block) TypeHasChildren() bool {
 	switch block.Type {
-	case "Paragraph": return block.Paragraph.Children
-	case "BulletedListItem": return block.BulletedListItem.Children
-	case "NumberedListItem": return block.NumberedListItem.Children
-	case "ToDo": return block.ToDo.Children
-	case "Toggle": return block.Toggle.Children
+	case "paragraph": return true
+	case "bulleted_list_item": return true
+	case "numbered_list_item": return true
+	case "to_do": return true
+	case "toggle": return true
 	}
 
-	return nil
+	return false
 }
 
 func Flatten(objects []RichText) string {
@@ -71,49 +71,52 @@ func Flatten(objects []RichText) string {
 	return builder.String()
 }
 
-func ParseSections(client Client, blocks []Block) []InterfaceSection {
+func ParseSections(client Client, blocks []Block) ([]InterfaceSection, error) {
 	var sections []InterfaceSection
 
 	var index = 0
 
-	var section *InterfaceSection
-
-	predicate := func(name string) bool {
-		heading := "heading"
-
-		return name[0:len(heading)] == heading
-	}
-
 	for index < len(blocks) {
 		block := &blocks[index]
 
-		if predicate(block.Type) || section == nil {
-			if section != nil {
-				sections = append(sections, *section)
+		if block.TypeHasChildren() {
+			var elements []InterfaceElement
+
+			if block.HasChildren {
+				cursor, err := client.GetChildren(*block.Id)
+				if err != nil { return nil, err }
+
+				children := cursor.ReadAll()
+
+				for _, element := range children {
+					text := element.GetText()
+
+					var flattened string
+
+					if text != nil {
+						flattened = Flatten(text)
+					}
+
+					elements = append(elements, InterfaceElement{
+						Text:  flattened,
+						Block: &element,
+					})
+				}
 			}
 
-			section = &InterfaceSection {
+			sections = append(sections, InterfaceSection {
 				Client: client,
 				Head: block,
 
 				Title: Flatten(block.GetText()),
-				Elements: []InterfaceElement { },
-			}
-		} else {
-			section.Elements = append(section.Elements, InterfaceElement {
-				Text: Flatten(block.GetText()),
-				Block: block,
+				Elements: elements,
 			})
 		}
 
 		index++
 	}
 
-	if section != nil {
-		sections = append(sections, *section)
-	}
-
-	return sections
+	return sections, nil
 }
 
 func (page *InterfacePage) Reload() error {
@@ -127,7 +130,10 @@ func (page *InterfacePage) Reload() error {
 
 	blocks := cursor.ReadAll()
 
-	page.Sections = ParseSections(page.Client, blocks)
+	sections, err := ParseSections(page.Client, blocks)
+	if err != nil { return err }
+
+	page.Sections = sections
 
 	return nil
 }
