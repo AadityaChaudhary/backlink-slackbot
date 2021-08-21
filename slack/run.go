@@ -57,7 +57,7 @@ func Run(appToken, botToken string) {
 						}
 					case *slackevents.MessageEvent:
 						log.Printf("msg sent")
-						HandleMsgs(ev, client)
+						HandleMsgs(ev, client, api)
 					}
 				default:
 					client.Debugf("unsupported Events API event received")

@@ -4,13 +4,17 @@ import (
 	"log"
 	"regexp"
 
+	"github.com/slack-go/slack"
 	"github.com/slack-go/slack/slackevents"
 	"github.com/slack-go/slack/socketmode"
 )
 
-func HandleMsgs(ev *slackevents.MessageEvent, client *socketmode.Client) {
+func HandleMsgs(ev *slackevents.MessageEvent, client *socketmode.Client, api *slack.Client) {
 	backlinks := getBacklinks(ev.Text)
+
+	log.Println(ev.Message)
 	log.Println(backlinks)
+
 }
 
 func getBacklinks(msg string) []string {
@@ -20,4 +24,12 @@ func getBacklinks(msg string) []string {
 		b[i] = v[2 : len(v)-2]
 	}
 	return b
+}
+
+func GetTeamName(api *slack.Client) (string, error) {
+	resp, err := api.AuthTest()
+	if err != nil {
+		return "", err
+	}
+	return resp.Team, nil
 }
