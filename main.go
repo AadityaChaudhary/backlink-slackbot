@@ -59,8 +59,7 @@ func main() {
 	if err != nil {
 		log.Println(err)
 	}
-	_ = session
 
-	slack.Run(slackAppToken, slackBotToken, nil)
+	slack.Run(slackAppToken, slackBotToken, &session)
 	log.Println("notion")
 }

@@ -19,7 +19,7 @@ func HandleMsgs(ev *slackevents.MessageEvent, client *socketmode.Client, api *sl
 	var user string
 	var txt string
 	var userID string
-	var time string
+	var t string
 	backlinks := getBacklinks(ev.Text)
 	if len(backlinks) == 0 {
 		log.Println("no backlinks found")
@@ -27,7 +27,7 @@ func HandleMsgs(ev *slackevents.MessageEvent, client *socketmode.Client, api *sl
 	}
 	txt = ev.Text
 	userID = ev.User
-	time = ev.TimeStamp
+	t = ev.TimeStamp
 
 	if ev.ThreadTimeStamp != "" {
 		log.Println("thread")
@@ -42,7 +42,7 @@ func HandleMsgs(ev *slackevents.MessageEvent, client *socketmode.Client, api *sl
 		}
 		txt = msgs[0].Text
 		userID = msgs[0].User
-		time = msgs[0].Timestamp
+		t = msgs[0].Timestamp
 	}
 
 	u, err := api.GetUserInfoContext(context.Background(), userID)
@@ -51,14 +51,14 @@ func HandleMsgs(ev *slackevents.MessageEvent, client *socketmode.Client, api *sl
 		return
 	}
 	user = u.Profile.RealName
-	timeS, err := convertTime(time)
+	timeS, err := convertTime(t)
 	log.Println(backlinks)
 	log.Println(txt)
 	log.Println(user)
-	log.Println(time)
+	log.Println(t)
 	log.Println(timeS.UTC())
 
-	header := fmt.Sprint(user, timeS.UTC())
+	header := fmt.Sprint(user, " ", timeS.Format(time.RFC822))
 
 	_, err = createNewBacklinkPage(session, backlinks[0], header, txt)
 	if err != nil {

@@ -70,5 +70,8 @@ func Run(appToken, botToken string, session *notion.Session) {
 
 	}()
 
-	client.Run()
+	err := client.Run()
+	if err != nil {
+		log.Println(err)
+	}
 }
