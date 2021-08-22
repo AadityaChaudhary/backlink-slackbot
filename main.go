@@ -5,42 +5,39 @@ import (
 	"log"
 	"os"
 
+	"backlink/db"
+	"backlink/notion"
 	"backlink/slack"
 
 	"github.com/joho/godotenv"
 )
 
 func main() {
-  // test stuff from db branch
-  
-// 	if err := InitDB(false); err != nil {
-// 		fmt.Println(err)
-// 		panic(err)
-// 	}
+	// test stuff from db branch
 
-// 	//DropAllTables()
+	// 	//DropAllTables()
 
-// 	//if err := AddWorkspace("nag"); err != nil {
-// 	//	fmt.Println(err)
-// 	//	panic(err)
-// 	//}
+	// 	//if err := AddWorkspace("nag"); err != nil {
+	// 	//	fmt.Println(err)
+	// 	//	panic(err)
+	// 	//}
 
-// 	//err := AddBacklinkToWorkspace("nag", Backlink{LinkName: "bushan", NotionID: "nagabushan"})
-// 	//if err != nil {
-// 	//	fmt.Println(err)
-// 	//	panic(err)
-// 	//}
+	// 	//err := AddBacklinkToWorkspace("nag", Backlink{LinkName: "bushan", NotionID: "nagabushan"})
+	// 	//if err != nil {
+	// 	//	fmt.Println(err)
+	// 	//	panic(err)
+	// 	//}
 
-// 	workspace := GetWorkspaceInfo("nag")
-// 	fmt.Println(workspace)
+	// 	workspace := GetWorkspaceInfo("nag")
+	// 	fmt.Println(workspace)
 
-// 	defer func() {
-// 		if err := DeinitDB(); err != nil {
-// 			fmt.Println(err)
-// 		}
-// 	}()
+	// 	defer func() {
+	// 		if err := DeinitDB(); err != nil {
+	// 			fmt.Println(err)
+	// 		}
+	// 	}()
 
-  fmt.Println("hello")
+	fmt.Println("hello")
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
@@ -48,8 +45,30 @@ func main() {
 
 	slackAppToken := os.Getenv("SLACK_APP_TOKEN")
 	slackBotToken := os.Getenv("SLACK_BOT_TOKEN")
+	notionToken := os.Getenv("NOTION_SECRET")
+	userP := os.Getenv("DB_USER")
+
 	log.Println("app", slackAppToken)
 	log.Println("bot", slackBotToken)
+	log.Println("notion", notionToken)
 
-	slack.Run(slackAppToken, slackBotToken)
+	if err := db.InitDB(false, userP); err != nil {
+		log.Println(err)
+		return
+	}
+	//db.DropAllTables()
+	if err := db.AddWorkspace("ht6"); err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer db.DeinitDB()
+	client := notion.NewClient(notionToken)
+	session, err := notion.NewSession(client, []string{os.Getenv("B_PARENT")})
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	slack.Run(slackAppToken, slackBotToken, &session)
+	log.Println("notion")
 }

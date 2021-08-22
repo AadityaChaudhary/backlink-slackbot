@@ -4,12 +4,14 @@ import (
 	"log"
 	"os"
 
+	"backlink/notion"
+
 	"github.com/slack-go/slack"
 	"github.com/slack-go/slack/slackevents"
 	"github.com/slack-go/slack/socketmode"
 )
 
-func Run(appToken, botToken string) {
+func Run(appToken, botToken string, session *notion.Session) {
 	log.Println("running slack bot")
 
 	api := slack.New(
@@ -27,6 +29,7 @@ func Run(appToken, botToken string) {
 
 	go func() {
 		for evt := range client.Events {
+			log.Println("e...")
 			switch evt.Type {
 			case socketmode.EventTypeConnecting:
 				log.Println("Connecting to slack with socket mode...")
@@ -57,7 +60,7 @@ func Run(appToken, botToken string) {
 						}
 					case *slackevents.MessageEvent:
 						log.Printf("msg sent")
-						HandleMsgs(ev, client, api)
+						HandleMsgs(ev, client, api, session)
 					}
 				default:
 					client.Debugf("unsupported Events API event received")
@@ -67,5 +70,8 @@ func Run(appToken, botToken string) {
 
 	}()
 
-	client.Run()
+	err := client.Run()
+	if err != nil {
+		log.Println(err)
+	}
 }

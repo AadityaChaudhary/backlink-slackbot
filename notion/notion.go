@@ -18,8 +18,8 @@ type Client struct {
 }
 
 type PageTitle struct {
-	Id string `json:"id"`
-	Type string `json:"type"`
+	Id    string     `json:"id"`
+	Type  string     `json:"type"`
 	Title []RichText `json:"title"`
 }
 
@@ -47,9 +47,11 @@ type Annotations struct {
 
 type TextInfo struct {
 	Content string `json:"content"`
-	Link    *struct {
-		URL string `json:"url"`
-	} `json:"link,omitempty"`
+	Link    *Link  `json:"link,omitempty"`
+}
+
+type Link struct {
+	URL string `json:"url"`
 }
 
 type RichText struct {
@@ -400,50 +402,56 @@ func (client Client) CreatePageWithBlocks(parentPageId string, title string, blo
 	}
 
 	type RequestData struct {
-		Parent PageParent `json:"parent"`
+		Parent     PageParent         `json:"parent"`
 		Properties PageNameProperties `json:"properties"`
-		Children []Block `json:"children"`
+		Children   []Block            `json:"children"`
 	}
 
-	titleProperty := PageName {
-		Title: []RichText {
+	titleProperty := PageName{
+		Title: []RichText{
 			{
 				Type: "text",
-				Text: &TextInfo {
+				Text: &TextInfo{
 					Content: title,
 				},
 			},
 		},
 	}
 
-	params := RequestData {
-		Parent: PageParent {
+	params := RequestData{
+		Parent: PageParent{
 			PageId: parentPageId,
 		},
-		Properties: PageNameProperties {
+		Properties: PageNameProperties{
 			Title: titleProperty,
 		},
 		Children: blocks,
 	}
 
 	paramsText, err := json.Marshal(params)
-	if err != nil { return Page {}, err }
+	if err != nil {
+		return Page{}, err
+	}
 
 	z := string(paramsText)
 	_ = z
 
 	body, err := client.MakeRequest("POST", "https://api.notion.com/v1/pages", string(paramsText))
-	if err != nil { return Page {}, err }
+	if err != nil {
+		return Page{}, err
+	}
 
 	var page Page
 	err = json.Unmarshal(body, &page)
-	if err != nil { return Page {}, err }
+	if err != nil {
+		return Page{}, err
+	}
 
 	return page, nil
 }
 
 func (client Client) CreatePage(parentPageId string, title string) (Page, error) {
-	return client.CreatePageWithBlocks(parentPageId, title, []Block { })
+	return client.CreatePageWithBlocks(parentPageId, title, []Block{})
 }
 
 func NewClient(token string) Client {
