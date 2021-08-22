@@ -1,19 +1,20 @@
-package main
+package db
 
 import (
 	"context"
 	"errors"
+
 	"github.com/cockroachdb/cockroach-go/crdb/crdbgorm"
 	"github.com/jinzhu/gorm"
 )
 
 var db *gorm.DB
 
-func InitDB(debug bool) (err error) {
-	const addr = "postgresql://{USERNAME}:{PASSWORD}" + // replace this
+func InitDB(debug bool, user string) (err error) {
+	var addr = "postgresql://" + user +
 		"@free-tier.gcp-us-central1.cockroachlabs.cloud:26257/defaultdb" +
 		"?sslmode=verify-full" +
-		"&sslrootcert=/home/lunarcoffee/.postgresql/root.crt" +
+		"&sslrootcert=/home/aadi/root.crt" +
 		"&options=--cluster%3Dclear-weasel-3066"
 
 	db, err = gorm.Open("postgres", addr)
