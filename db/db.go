@@ -20,6 +20,7 @@ func InitDB(debug bool, user string) (err error) {
 	db, err = gorm.Open("postgres", addr)
 
 	db.LogMode(debug)
+	DropAllTables()
 	db.AutoMigrate(&Workspace{}, &Backlink{})
 
 	return

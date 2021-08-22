@@ -56,6 +56,7 @@ func main() {
 		log.Println(err)
 		return
 	}
+	//db.DropAllTables()
 	if err := db.AddWorkspace("ht6"); err != nil {
 		fmt.Println(err)
 		return

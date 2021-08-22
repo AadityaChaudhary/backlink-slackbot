@@ -1,6 +1,7 @@
 package slack
 
 import (
+	"backlink/db"
 	"backlink/notion"
 	"context"
 	"fmt"
@@ -20,15 +21,13 @@ func HandleMsgs(ev *slackevents.MessageEvent, client *socketmode.Client, api *sl
 	var txt string
 	var userID string
 	var t string
+	var link string
+	var err error
 	backlinks := getBacklinks(ev.Text)
 	if len(backlinks) == 0 {
 		log.Println("no backlinks found")
 		return
 	}
-	txt = ev.Text
-	userID = ev.User
-	t = ev.TimeStamp
-
 	if ev.ThreadTimeStamp != "" {
 		log.Println("thread")
 		params := &slack.GetConversationRepliesParameters{
@@ -43,6 +42,22 @@ func HandleMsgs(ev *slackevents.MessageEvent, client *socketmode.Client, api *sl
 		txt = msgs[0].Text
 		userID = msgs[0].User
 		t = msgs[0].Timestamp
+
+		link, err = api.GetPermalink(&slack.PermalinkParameters{Channel: ev.Channel, Ts: msgs[0].Timestamp})
+		if err != nil {
+			log.Println("err", err)
+			return
+		}
+	} else {
+
+		txt = ev.Text
+		userID = ev.User
+		t = ev.TimeStamp
+		link, err = api.GetPermalink(&slack.PermalinkParameters{Channel: ev.Channel, Ts: ev.TimeStamp})
+		if err != nil {
+			log.Println("err", err)
+			return
+		}
 	}
 
 	u, err := api.GetUserInfoContext(context.Background(), userID)
@@ -58,13 +73,42 @@ func HandleMsgs(ev *slackevents.MessageEvent, client *socketmode.Client, api *sl
 	log.Println(t)
 	log.Println(timeS.UTC())
 
-	header := fmt.Sprint(user, " ", timeS.Format(time.RFC822))
-
-	_, err = createNewBacklinkPage(session, backlinks[0], header, txt)
+	teamName, err := GetTeamName(api)
 	if err != nil {
-		log.Println("err", err)
+		log.Println(err)
 		return
 	}
+	header := fmt.Sprint(user, " ", timeS.Format(time.RFC822))
+
+	for _, backlink := range backlinks {
+		if db.BacklinkExists(teamName, backlink) {
+			pID, err := db.GetNotionID(teamName, backlink)
+			if err != nil {
+				log.Println("b", backlink, "err", err)
+				return
+			}
+			err = addContent(session, pID, header, txt, link)
+			if err != nil {
+				log.Println("b", backlink, "err", err)
+				return
+			}
+		} else {
+			pID, err := createNewBacklinkPage(session, backlink, header, txt, link)
+			if err != nil {
+				log.Println("b", backlink, "err", err)
+				return
+			}
+			bldb := db.Backlink{LinkName: backlink, NotionID: pID}
+			db.AddBacklinkToWorkspace(teamName, bldb)
+		}
+
+	}
+
+	//	_, err = createNewBacklinkPage(session, backlinks[0], header, txt)
+	//	if err != nil {
+	//		log.Println("err", err)
+	//		return
+	//	}
 
 }
 
@@ -95,7 +139,7 @@ func convertTime(ut string) (time.Time, error) {
 	return time.Unix(int64(s), int64(ns)), nil
 }
 
-func createNewBacklinkPage(session *notion.Session, title, header, para string) (string, error) {
+func createNewBacklinkPage(session *notion.Session, title, header, para, link string) (string, error) {
 
 	blocks := []notion.Block{
 		notion.Block{
@@ -121,6 +165,23 @@ func createNewBacklinkPage(session *notion.Session, title, header, para string) 
 						Type: "text",
 						Text: &notion.TextInfo{
 							Content: para,
+						},
+					},
+				},
+			},
+		},
+		notion.Block{
+			Object: "block",
+			Type:   "paragraph",
+			Paragraph: &notion.TextTree{
+				Text: []notion.RichText{
+					notion.RichText{
+						Type: "text",
+						Text: &notion.TextInfo{
+							Content: "Go To Message",
+							Link: &notion.Link{
+								URL: link,
+							},
 						},
 					},
 				},
@@ -131,7 +192,7 @@ func createNewBacklinkPage(session *notion.Session, title, header, para string) 
 	return p.Id, err
 }
 
-func addContent(session *notion.Session, pageID, header, para string) error {
+func addContent(session *notion.Session, pageID, header, para, link string) error {
 	blocks := []notion.Block{
 		notion.Block{
 			Object: "block",
@@ -156,6 +217,23 @@ func addContent(session *notion.Session, pageID, header, para string) error {
 						Type: "text",
 						Text: &notion.TextInfo{
 							Content: para,
+						},
+					},
+				},
+			},
+		},
+		notion.Block{
+			Object: "block",
+			Type:   "paragraph",
+			Paragraph: &notion.TextTree{
+				Text: []notion.RichText{
+					notion.RichText{
+						Type: "text",
+						Text: &notion.TextInfo{
+							Content: "Go To Message",
+							Link: &notion.Link{
+								URL: link,
+							},
 						},
 					},
 				},
