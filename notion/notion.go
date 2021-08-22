@@ -17,19 +17,23 @@ type Client struct {
 	Version string
 }
 
+type PageTitle struct {
+	Id string `json:"id"`
+	Type string `json:"type"`
+	Title []RichText `json:"title"`
+}
+
+type PageProperties struct {
+	Title PageTitle `json:"title"`
+}
+
 type Page struct {
-	Id     *string `json:"page"`
+	Id     *string `json:"id"`
 	Object string  `json:"object"`
 	Parent struct {
 		Type string `json:"type"`
 	} `json:"parent"`
-	Properties *struct {
-		Title struct {
-			Id string `json:"id"`
-			Type string `json:"type"`
-			Title []RichText `json:"title"`
-		} `json:"title"`
-	} `json:"properties,omitempty"`
+	Properties *PageProperties `json:"properties,omitempty"`
 }
 
 type Annotations struct {
@@ -45,16 +49,16 @@ type TextInfo struct {
 	Content string `json:"content"`
 	Link    *struct {
 		URL string `json:"url"`
-	} `json:"link"`
+	} `json:"link,omitempty"`
 }
 
 type RichText struct {
 	Type        string       `json:"type"`
-	PlainText   *string      `json:"plain_text"`
-	HREF        *string      `json:"href"`
+	PlainText   *string      `json:"plain_text,omitempty"`
+	HREF        *string      `json:"href,omitempty"`
 	Annotations *Annotations `json:"annotations,omitempty"`
 
-	Text *TextInfo `json:"text"`
+	Text *TextInfo `json:"text,omitempty"`
 }
 
 type Text struct {
@@ -380,6 +384,66 @@ func (client Client) GetDatabasesFrom(from *string, size int) (DatabaseCursor, e
 // GetDatabases does not work
 func (client Client) GetDatabases() (DatabaseCursor, error) {
 	return client.GetDatabasesFrom(nil, 50)
+}
+
+func (client Client) CreatePageWithBlocks(parentPageId string, title string, blocks []Block) (Page, error) {
+	type PageParent struct {
+		PageId string `json:"page_id"`
+	}
+
+	type PageName struct {
+		Title []RichText `json:"title"`
+	}
+
+	type PageNameProperties struct {
+		Title PageName `json:"title"`
+	}
+
+	type RequestData struct {
+		Parent PageParent `json:"parent"`
+		Properties PageNameProperties `json:"properties"`
+		Children []Block `json:"children"`
+	}
+
+	titleProperty := PageName {
+		Title: []RichText {
+			{
+				Type: "text",
+				Text: &TextInfo {
+					Content: title,
+				},
+			},
+		},
+	}
+
+	params := RequestData {
+		Parent: PageParent {
+			PageId: parentPageId,
+		},
+		Properties: PageNameProperties {
+			Title: titleProperty,
+		},
+		Children: blocks,
+	}
+
+	paramsText, err := json.Marshal(params)
+	if err != nil { return Page {}, err }
+
+	z := string(paramsText)
+	_ = z
+
+	body, err := client.MakeRequest("POST", "https://api.notion.com/v1/pages", string(paramsText))
+	if err != nil { return Page {}, err }
+
+	var page Page
+	err = json.Unmarshal(body, &page)
+	if err != nil { return Page {}, err }
+
+	return page, nil
+}
+
+func (client Client) CreatePage(parentPageId string, title string) (Page, error) {
+	return client.CreatePageWithBlocks(parentPageId, title, []Block { })
 }
 
 func NewClient(token string) Client {

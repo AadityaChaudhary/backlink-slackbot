@@ -24,6 +24,7 @@ type InterfacePage struct {
 	Id string
 
 	Title string
+	Children []InterfacePage
 	Sections []InterfaceSection
 }
 
@@ -71,7 +72,8 @@ func Flatten(objects []RichText) string {
 	return builder.String()
 }
 
-func ParseSections(client Client, blocks []Block) ([]InterfaceSection, error) {
+func ParseSections(client Client, blocks []Block) ([]InterfaceSection, []InterfacePage, error) {
+	var children []InterfacePage
 	var sections []InterfaceSection
 
 	var index = 0
@@ -79,12 +81,22 @@ func ParseSections(client Client, blocks []Block) ([]InterfaceSection, error) {
 	for index < len(blocks) {
 		block := blocks[index]
 
-		if block.TypeHasChildren() {
+		if block.Type == "child_page" {
+			page := InterfacePage {
+				Client: client,
+				Id: *block.Id,
+			}
+
+			err := page.Reload()
+			if err != nil { return nil, nil, err }
+
+			children = append(children, page)
+		} else if block.TypeHasChildren() {
 			var elements []InterfaceElement
 
 			if block.HasChildren {
 				cursor, err := client.GetChildren(*block.Id)
-				if err != nil { return nil, err }
+				if err != nil { return nil, nil, err }
 
 				children := cursor.ReadAll()
 
@@ -116,7 +128,7 @@ func ParseSections(client Client, blocks []Block) ([]InterfaceSection, error) {
 		index++
 	}
 
-	return sections, nil
+	return sections, children, nil
 }
 
 func (section *InterfaceSection) AppendBlock(block Block) (InterfaceElement, error) {
@@ -206,6 +218,26 @@ func (page *InterfacePage) AppendSection(description string, heading string) (In
 	return section, err
 }
 
+func (page *InterfacePage) AppendPageWithBlocks(title string, blocks []Block) (InterfacePage, error) {
+	value, err := page.Client.CreatePageWithBlocks(page.Id, title, blocks)
+	if err != nil { return InterfacePage {}, err }
+
+	result := InterfacePage {
+		Client: page.Client,
+
+		Id: *value.Id,
+		Title: Flatten(value.Properties.Title.Title),
+	}
+
+	page.Children = append(page.Children, result)
+
+	return result, nil
+}
+
+func (page *InterfacePage) AppendPage(title string) (InterfacePage, error) {
+	return page.AppendPageWithBlocks(title, []Block { })
+}
+
 func (page *InterfacePage) Reload() error {
 	value, err := page.Client.GetPage(page.Id)
 	if err != nil { return err }
@@ -217,10 +249,11 @@ func (page *InterfacePage) Reload() error {
 
 	blocks := cursor.ReadAll()
 
-	sections, err := ParseSections(page.Client, blocks)
+	sections, children, err := ParseSections(page.Client, blocks)
 	if err != nil { return err }
 
 	page.Sections = sections
+	page.Children = children
 
 	return nil
 }
