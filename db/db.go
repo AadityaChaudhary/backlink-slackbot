@@ -83,6 +83,16 @@ func AddBacklinkToWorkspace(teamName string, backlink Backlink) error {
 	)
 }
 
+func BacklinkExists(teamName string, backlinkName string) bool {
+	workspace := GetWorkspaceInfo(teamName)
+	for _, backlink := range workspace.Backlinks {
+		if backlink.LinkName == backlinkName {
+			return true
+		}
+	}
+	return false
+}
+
 func DropAllTables() {
 	db.DropTableIfExists(&Workspace{})
 	db.DropTableIfExists(&Backlink{})
