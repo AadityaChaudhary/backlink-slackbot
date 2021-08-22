@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 
+	"backlink/notion"
 	"backlink/slack"
 
 	"github.com/joho/godotenv"
@@ -48,8 +49,18 @@ func main() {
 
 	slackAppToken := os.Getenv("SLACK_APP_TOKEN")
 	slackBotToken := os.Getenv("SLACK_BOT_TOKEN")
+	notionToken := os.Getenv("NOTION_SECRET")
 	log.Println("app", slackAppToken)
 	log.Println("bot", slackBotToken)
+	log.Println("notion", notionToken)
 
-	slack.Run(slackAppToken, slackBotToken)
+	client := notion.NewClient(notionToken)
+	session, err := notion.NewSession(client, []string{os.Getenv("B_PARENT")})
+	if err != nil {
+		log.Println(err)
+	}
+	_ = session
+
+	slack.Run(slackAppToken, slackBotToken, nil)
+	log.Println("notion")
 }
